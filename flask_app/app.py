@@ -62,6 +62,8 @@ def plot_data(_country):
 
     p.add_tools(hover)
     p.legend.location = 'top_left'
+    p.toolbar.logo = None
+    p.toolbar_location = None
 
     return p, country_names
 
