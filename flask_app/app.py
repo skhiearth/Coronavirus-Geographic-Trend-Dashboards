@@ -73,7 +73,7 @@ def index():
     # Determine the selected country
     current_country_name = request.args.get("country_names")
     if current_country_name is None:
-        current_country_name = "Mainland China"
+        current_country_name = "China"
 
     # Create the plot
     plot, name = plot_data(current_country_name)
