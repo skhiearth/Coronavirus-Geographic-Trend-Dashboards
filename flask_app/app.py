@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request
 import pandas as pd
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, Range1d
 from bokeh.plotting import figure
 from bokeh.models.tools import HoverTool
 from bokeh.embed import components
