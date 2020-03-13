@@ -25,47 +25,61 @@ def plot_data(_country):
     confirmed_df_raw = confirmed_df_raw.drop(['Province/State', 'Lat', 'Long'], axis=1)
     total_confirmed = confirmed_df_raw.groupby('Country/Region', as_index=False).agg(sum).sort_values(latest_date,
                                                                                                       ascending=False)
-    total_confirmed = pd.melt(total_confirmed, id_vars='Country/Region', var_name='Dates', value_name='Count')
+    total_confirmed = pd.melt(total_confirmed, id_vars='Country/Region', var_name='Dates', value_name='Confirmed')
     total_confirmed['Dates'] = pd.to_datetime(total_confirmed['Dates'])
 
     deaths_df_raw = deaths_df_raw.drop(['Province/State', 'Lat', 'Long'], axis=1)
     total_deaths = deaths_df_raw.groupby('Country/Region', as_index=False).agg(sum).sort_values(latest_date,
                                                                                                 ascending=False)
-    total_deaths = pd.melt(total_deaths, id_vars='Country/Region', var_name='Dates', value_name='Count')
+    total_deaths = pd.melt(total_deaths, id_vars='Country/Region', var_name='Dates', value_name='Deaths')
     total_deaths['Dates'] = pd.to_datetime(total_deaths['Dates'])
 
     recovered_df_raw = recovered_df_raw.drop(['Province/State', 'Lat', 'Long'], axis=1)
     total_recovered = recovered_df_raw.groupby('Country/Region', as_index=False).agg(sum).sort_values(latest_date,
                                                                                                       ascending=False)
-    total_recovered = pd.melt(total_recovered, id_vars='Country/Region', var_name='Dates', value_name='Count')
+    total_recovered = pd.melt(total_recovered, id_vars='Country/Region', var_name='Dates', value_name='Recovered')
     total_recovered['Dates'] = pd.to_datetime(total_recovered['Dates'])
+
+    total_confirmed['Deaths'] = total_deaths['Deaths']
+    total_confirmed['Recovered'] = total_recovered['Recovered']
+
+    total_confirmed['Active'] = total_confirmed['Confirmed'] - (
+            total_confirmed['Deaths'] + total_confirmed['Recovered'])
 
     country_names = total_recovered['Country/Region'].unique()
 
     mask_confirmed = total_confirmed['Country/Region'] == _country
     _confirmed = ColumnDataSource(total_confirmed[mask_confirmed])
 
-    mask_deaths = total_deaths['Country/Region'] == _country
-    _deaths = ColumnDataSource(total_deaths[mask_deaths])
-
-    mask_recovered = total_recovered['Country/Region'] == _country
-    _recovered = ColumnDataSource(total_recovered[mask_recovered])
-
-    p = figure(title=_country, x_axis_label='Date', y_axis_label='Count',
-               x_axis_type='datetime', plot_width=800, plot_height=500)
-    p.line(x='Dates', y='Count', source=_confirmed, color='black', line_width=3, legend="Confirmed Cases")
-    p.line(x='Dates', y='Count', source=_deaths, color='red', line_width=3, legend="Deaths")
-    p.line(x='Dates', y='Count', source=_recovered, color='green', line_width=3, legend="Recovered")
+    p = figure(title="All Cases", x_axis_label='Date', y_axis_label='Count',
+               x_axis_type='datetime', plot_width=600, plot_height=400)
+    p.line(x='Dates', y='Confirmed', source=_confirmed, color='black', line_width=3, legend="Confirmed Cases")
+    p.line(x='Dates', y='Deaths', source=_confirmed, color='red', line_width=3, legend="Confirmed Deaths")
+    p.line(x='Dates', y='Recovered', source=_confirmed, color='green', line_width=3, legend="Recoveries")
 
     hover = HoverTool()
-    hover.tooltips = [('', '@Count')]
+    hover.tooltips = [('Confirmed', '@Confirmed'), ('Deaths', '@Deaths'), ('Recoveries', '@Recovered')]
 
     p.add_tools(hover)
     p.legend.location = 'top_left'
+
     p.toolbar.logo = None
     p.toolbar_location = None
 
-    return p, country_names
+    _active = ColumnDataSource(total_confirmed[mask_confirmed])
+    p1 = figure(title="Active Cases", x_axis_label='Date', y_axis_label='Active Cases',
+                x_axis_type='datetime', plot_width=600, plot_height=400)
+    p1.line(x='Dates', y='Active', source=_active, color='black', line_width=3)
+
+    hover1 = HoverTool()
+    hover1.tooltips = [('Active Cases', '@Active')]
+
+    p1.add_tools(hover1)
+
+    p1.toolbar.logo = None
+    p1.toolbar_location = None
+
+    return p, p1, country_names
 
 
 @app.route('/')
@@ -76,11 +90,13 @@ def index():
         current_country_name = "China"
 
     # Create the plot
-    plot, name = plot_data(current_country_name)
+    plot, plot1, name = plot_data(current_country_name)
 
     # Embed plot into HTML via Flask Render
     script, div = components(plot)
+    script1, div1 = components(plot1)
     return render_template("index.html", script_plot=script, div_plot=div,
+                           script_active_plot=script1, div_active_plot=div1,
                            country_names=name, current_country_name=current_country_name)
 
 
