@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request
 import pandas as pd
-from bokeh.models import ColumnDataSource, Range1d
+from bokeh.models import ColumnDataSource
 from bokeh.plotting import figure
 from bokeh.models.tools import HoverTool
 from bokeh.embed import components
@@ -40,16 +40,22 @@ def plot_data(_country):
     total_recovered = pd.melt(total_recovered, id_vars='Country/Region', var_name='Dates', value_name='Recovered')
     total_recovered['Dates'] = pd.to_datetime(total_recovered['Dates'])
 
-    total_confirmed['Deaths'] = total_deaths['Deaths']
-    total_confirmed['Recovered'] = total_recovered['Recovered']
-
-    total_confirmed['Active'] = total_confirmed['Confirmed'] - (
-            total_confirmed['Deaths'] + total_confirmed['Recovered'])
-
     country_names = total_recovered['Country/Region'].unique()
 
     mask_confirmed = total_confirmed['Country/Region'] == _country
-    _confirmed = ColumnDataSource(total_confirmed[mask_confirmed])
+    mask_death = total_deaths['Country/Region'] == _country
+    mask_recovered = total_recovered['Country/Region'] == _country
+
+    _confirmed = total_confirmed[mask_confirmed].reset_index()
+    _deaths = total_deaths[mask_death].reset_index()
+    _recovered = total_recovered[mask_recovered].reset_index()
+
+    _confirmed['Deaths'] = _deaths['Deaths']
+    _confirmed['Recovered'] = _recovered['Recovered']
+
+    _confirmed['Active'] = _confirmed['Confirmed'] - _confirmed['Deaths'] - _confirmed['Recovered']
+    _active = ColumnDataSource(_confirmed)
+    _confirmed = ColumnDataSource(_confirmed)
 
     p = figure(title="All Cases", x_axis_label='Date', y_axis_label='Count',
                x_axis_type='datetime', plot_width=600, plot_height=400)
@@ -66,7 +72,6 @@ def plot_data(_country):
     p.toolbar.logo = None
     p.toolbar_location = None
 
-    _active = ColumnDataSource(total_confirmed[mask_confirmed])
     p1 = figure(title="Active Cases", x_axis_label='Date', y_axis_label='Active Cases',
                 x_axis_type='datetime', plot_width=600, plot_height=400)
     p1.line(x='Dates', y='Active', source=_active, color='black', line_width=3)
